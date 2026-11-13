@@ -189,16 +189,18 @@ python -m ruff format --check .
 
 ## 9. Starting the Phase 1 Application
 
+### Streamlit Web Dashboard Mode (Recommended)
+```powershell
+python -m streamlit run app.py
+```
+*(Alternatively: `streamlit run app.py`)*  
+Open your browser at `http://localhost:8501` to view the dark navy/cyan dashboard with live health metrics, run Qwen LLM inference tests, and inspect dense vector embeddings.
+
 ### Command-Line Interface (CLI Mode)
 ```powershell
 python app.py
 ```
-
-### Streamlit Web Dashboard Mode
-```powershell
-streamlit run app.py
-```
-Open your browser at `http://localhost:8501` to view interactive model health metrics, run live generation tests, and inspect vector embeddings.
+Prints the Phase 1 environment scorecard and health status directly to your terminal.
 
 ---
 

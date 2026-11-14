@@ -190,6 +190,9 @@ class OllamaClient:
         model: str | None = None,
         system: str | None = None,
         options: dict[str, Any] | None = None,
+        format: str | dict[str, Any] | None = None,
+        think: bool | None = None,
+        timeout: float | None = None,
     ) -> GenerateResponse:
         """Generate text from a model using the official /api/generate endpoint.
 
@@ -198,6 +201,9 @@ class OllamaClient:
             model: Target model name (defaults to configured LLM).
             system: Optional system instruction prompt.
             options: Optional runtime inference hyperparameters (e.g. temperature).
+            format: Optional output format ('json' or a JSON schema dict for structured output).
+            think: Optional boolean to enable/disable reasoning/thinking tokens for thinking models.
+            timeout: Optional per-request timeout in seconds (overrides default).
 
         Returns:
             GenerateResponse instance with generated text and metadata.
@@ -212,6 +218,7 @@ class OllamaClient:
         if not prompt or not prompt.strip():
             raise ValueError("Prompt cannot be empty.")
 
+        req_timeout = timeout if timeout is not None else self.timeout
         url = f"{self.base_url}/api/generate"
         payload: dict[str, Any] = {
             "model": target_model,
@@ -222,10 +229,14 @@ class OllamaClient:
             payload["system"] = system
         if options:
             payload["options"] = options
+        if format:
+            payload["format"] = format
+        if think is not None:
+            payload["think"] = think
 
         logger.debug("Submitting generation request to %s (model: %s)", url, target_model)
         try:
-            resp = self.session.post(url, json=payload, timeout=self.timeout)
+            resp = self.session.post(url, json=payload, timeout=req_timeout)
             if resp.status_code == 404:
                 msg = f"Model '{target_model}' not found on Ollama server at {self.base_url}."
                 logger.error(msg)
@@ -253,7 +264,7 @@ class OllamaClient:
             logger.error(msg)
             raise OllamaConnectionError(msg) from exc
         except ReqTimeout as exc:
-            msg = f"Generation request timed out after {self.timeout}s (model: {target_model})"
+            msg = f"Generation request timed out after {req_timeout}s (model: {target_model})"
             logger.error(msg)
             raise OllamaTimeoutError(msg) from exc
         except HTTPError as exc:
@@ -264,6 +275,72 @@ class OllamaClient:
             msg = f"Failed to parse JSON response from /api/generate: {exc}"
             logger.error(msg)
             raise OllamaAPIError(msg) from exc
+
+    def generate_stream(
+        self,
+        prompt: str,
+        model: str | None = None,
+        system: str | None = None,
+        options: dict[str, Any] | None = None,
+        think: bool | None = None,
+        timeout: float | None = None,
+    ):
+        """Generate text in streaming mode, yielding incremental text tokens.
+
+        Args:
+            prompt: Text prompt input.
+            model: Target model name.
+            system: Optional system instruction prompt.
+            options: Optional runtime inference options.
+            think: Optional boolean to toggle thinking tokens.
+            timeout: Optional request timeout in seconds.
+
+        Yields:
+            Incremental string tokens from the model.
+        """
+        import json
+
+        target_model = model or self.default_llm
+        if not prompt or not prompt.strip():
+            raise ValueError("Prompt cannot be empty.")
+
+        req_timeout = timeout if timeout is not None else self.timeout
+        url = f"{self.base_url}/api/generate"
+        payload: dict[str, Any] = {
+            "model": target_model,
+            "prompt": prompt,
+            "stream": True,
+        }
+        if system:
+            payload["system"] = system
+        if options:
+            payload["options"] = options
+        if think is not None:
+            payload["think"] = think
+
+        try:
+            resp = self.session.post(url, json=payload, timeout=req_timeout, stream=True)
+            if resp.status_code == 404:
+                raise OllamaModelNotFoundError(
+                    f"Model '{target_model}' not found on Ollama server at {self.base_url}."
+                )
+            resp.raise_for_status()
+
+            for line in resp.iter_lines(decode_unicode=True):
+                if line:
+                    try:
+                        chunk = json.loads(line)
+                        token = chunk.get("response", "")
+                        if token:
+                            yield token
+                    except ValueError:
+                        continue
+        except ReqConnectionError as exc:
+            raise OllamaConnectionError(f"Failed to connect to Ollama server: {exc}") from exc
+        except ReqTimeout as exc:
+            raise OllamaTimeoutError(f"Streaming generation timed out: {exc}") from exc
+        except HTTPError as exc:
+            raise OllamaAPIError(f"Ollama streaming generation failed: {exc}") from exc
 
     def embed(
         self,

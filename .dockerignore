@@ -1,0 +1,35 @@
+# Git and local configs
+.git/
+.gitignore
+.env
+*.env
+.streamlit/secrets.toml
+!.streamlit/secrets.toml.example
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+tests/
+phase7_test_results.xml
+phase8_final_test_results.xml
+phase9_test_results.xml
+
+# Temporary and local data
+data/backups/
+data/uploads/
+logs/
+.vscode/
+.idea/

@@ -1,0 +1,13 @@
+GRAPH RAG VS VECTOR RAG: AN ARCHITECTURAL BENCHMARK
+
+1. Introduction
+Retrieval-Augmented Generation (RAG) combines dense vector retrieval with large language models to ground generation in external knowledge bases. Traditional Vector RAG embeds document chunks into dense metric spaces and performs approximate nearest neighbor search via cosine distance.
+
+2. Limitations of Vector RAG
+While Vector RAG achieves strong performance on single-fact retrieval queries, it struggles with multi-hop reasoning tasks where the answer requires connecting disconnected concepts spread across multiple documents. Vector RAG treats document chunks as isolated semantic islands, ignoring the rich relational topology between entities.
+
+3. Knowledge Graph RAG Architecture
+Graph RAG extracts entities, relationships, and claims from source texts, structuring them into an interconnected knowledge graph. By traversing graph edges, Graph RAG performs multi-hop reasoning, community discovery, and global summary generation.
+
+4. Hybrid RAG Synthesis
+Hybrid RAG fuses vector-based semantic retrieval with graph-based relational traversal. Dense vector retrieval provides broad contextual recall, while knowledge graph paths guarantee topological precision and structural fidelity.

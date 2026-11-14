@@ -135,6 +135,11 @@ class HealthChecker:
             ("pydantic_settings", "pydantic-settings"),
             ("streamlit", "streamlit"),
             ("pytest", "pytest"),
+            ("pypdf", "pypdf"),
+            ("docx", "python-docx"),
+            ("chromadb", "chromadb"),
+            ("networkx", "networkx"),
+            ("plotly", "plotly"),
         ]
         missing = []
         installed_versions = {}
@@ -171,7 +176,7 @@ class HealthChecker:
                 message="Application settings loaded and validated successfully.",
                 details=safe_cfg,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return HealthCheckResult(
                 name="Configuration",
                 status=HealthStatus.FAIL,
@@ -181,12 +186,30 @@ class HealthChecker:
 
     def check_directories(self) -> HealthCheckResult:
         """Ensure required project directories exist."""
-        required_dirs = ["logs", "data", "docs", "src", "tests", "scripts"]
+        required_dirs = [
+            "logs",
+            "data",
+            "data/uploads",
+            "data/processed",
+            "data/chroma",
+            "data/knowledge_graph",
+            "docs",
+            "src",
+            "tests",
+            "scripts",
+        ]
         missing_dirs = []
         existing_dirs = []
 
         for d in required_dirs:
             path = self.base_dir / d
+            # Auto-create data subdirectories if parent data exists
+            if (
+                d in ("data/uploads", "data/processed", "data/chroma", "data/knowledge_graph")
+                and not path.is_dir()
+            ):
+                path.mkdir(parents=True, exist_ok=True)
+
             if path.is_dir():
                 existing_dirs.append(d)
             else:
@@ -202,7 +225,7 @@ class HealthChecker:
         return HealthCheckResult(
             name="Project Directories",
             status=HealthStatus.PASS,
-            message="All project directories (logs, data, docs, src, tests, scripts) exist.",
+            message="All project directories (logs, data, uploads, processed, chroma, docs, src, tests, scripts) exist.",
             details={"existing": existing_dirs},
         )
 
@@ -223,7 +246,7 @@ class HealthChecker:
                 message=f"Ollama server at {self.client.base_url} did not respond.",
                 details={"base_url": self.client.base_url},
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return HealthCheckResult(
                 name="Ollama Server",
                 status=HealthStatus.FAIL,

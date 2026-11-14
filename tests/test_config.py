@@ -94,3 +94,138 @@ class TestConfig:
         monkeypatch.setenv("APP_ENV", "testing_reload")
         s3 = reload_settings()
         assert s3.app_env == "testing_reload"
+
+    def test_phase5_graph_retrieval_settings(self):
+        """Test Phase 5 graph retrieval configuration defaults and validation."""
+        cfg = Settings(_env_file=None)
+        assert cfg.graph_max_hops == 2
+        assert cfg.graph_max_results == 10
+        assert cfg.graph_max_paths == 50
+        assert cfg.graph_traversal_direction == "both"
+        assert cfg.graph_max_degree == 50
+
+        # Custom valid values
+        cfg_custom = Settings(
+            graph_max_hops=3,
+            graph_traversal_direction="OUT",
+            graph_max_results=25,
+            _env_file=None,
+        )
+        assert cfg_custom.graph_max_hops == 3
+        assert cfg_custom.graph_traversal_direction == "out"
+        assert cfg_custom.graph_max_results == 25
+
+        # Invalid hops (must be 1 to 3)
+        with pytest.raises(ValidationError):
+            Settings(graph_max_hops=0, _env_file=None)
+        with pytest.raises(ValidationError):
+            Settings(graph_max_hops=4, _env_file=None)
+
+        # Invalid direction
+        with pytest.raises(ValidationError):
+            Settings(graph_traversal_direction="sideways", _env_file=None)
+
+        # Non-positive numbers
+        with pytest.raises(ValidationError):
+            Settings(graph_max_results=0, _env_file=None)
+        with pytest.raises(ValidationError):
+            Settings(graph_max_paths=-1, _env_file=None)
+
+    def test_phase6_hybrid_retrieval_settings(self):
+        """Test Phase 6 hybrid retrieval settings defaults and validation."""
+        cfg = Settings(_env_file=None)
+        assert cfg.hybrid_top_k == 10
+        assert cfg.hybrid_vector_top_k == 10
+        assert cfg.hybrid_graph_top_k == 10
+        assert cfg.hybrid_rrf_k == 60
+        assert cfg.hybrid_vector_weight == 1.0
+        assert cfg.hybrid_graph_weight == 1.0
+        assert cfg.hybrid_min_rrf_score == 0.0
+        assert cfg.hybrid_parallel_retrieval is False
+
+        # Custom valid values
+        cfg_custom = Settings(
+            hybrid_top_k=5,
+            hybrid_rrf_k=30,
+            hybrid_vector_weight=0.8,
+            hybrid_graph_weight=1.2,
+            hybrid_min_rrf_score=0.01,
+            hybrid_parallel_retrieval=True,
+            _env_file=None,
+        )
+        assert cfg_custom.hybrid_top_k == 5
+        assert cfg_custom.hybrid_rrf_k == 30
+        assert cfg_custom.hybrid_vector_weight == 0.8
+        assert cfg_custom.hybrid_graph_weight == 1.2
+        assert cfg_custom.hybrid_min_rrf_score == 0.01
+        assert cfg_custom.hybrid_parallel_retrieval is True
+
+        # Both weights zero must be rejected
+        with pytest.raises(ValidationError):
+            Settings(hybrid_vector_weight=0.0, hybrid_graph_weight=0.0, _env_file=None)
+
+        # Negative weights rejected
+        with pytest.raises(ValidationError):
+            Settings(hybrid_vector_weight=-0.5, _env_file=None)
+        with pytest.raises(ValidationError):
+            Settings(hybrid_graph_weight=-0.1, _env_file=None)
+
+        # Non-positive K values rejected
+        with pytest.raises(ValidationError):
+            Settings(hybrid_top_k=0, _env_file=None)
+        with pytest.raises(ValidationError):
+            Settings(hybrid_rrf_k=0, _env_file=None)
+
+    def test_phase7_rag_settings(self):
+        """Test Phase 7 grounded RAG settings defaults and validation."""
+        cfg = Settings(_env_file=None)
+        assert cfg.rag_generation_model == "qwen3:8b"
+        assert cfg.rag_temperature == 0.1
+        assert cfg.rag_top_k == 5
+        assert cfg.rag_max_context_tokens == 3000
+        assert cfg.rag_max_generation_tokens == 1024
+        assert cfg.rag_generation_timeout == 180
+        assert cfg.rag_min_evidence_items == 1
+        assert cfg.rag_require_citations is True
+        assert cfg.rag_enable_faithfulness_check is True
+
+        # Custom values
+        cfg_custom = Settings(
+            rag_generation_model="custom-model",
+            rag_temperature=0.7,
+            rag_top_k=10,
+            rag_max_context_tokens=4000,
+            rag_max_generation_tokens=2048,
+            rag_generation_timeout=240,
+            rag_min_evidence_items=2,
+            rag_require_citations=False,
+            rag_enable_faithfulness_check=False,
+            _env_file=None,
+        )
+        assert cfg_custom.rag_generation_model == "custom-model"
+        assert cfg_custom.rag_temperature == 0.7
+        assert cfg_custom.rag_top_k == 10
+        assert cfg_custom.rag_max_context_tokens == 4000
+        assert cfg_custom.rag_max_generation_tokens == 2048
+        assert cfg_custom.rag_generation_timeout == 240
+        assert cfg_custom.rag_min_evidence_items == 2
+        assert cfg_custom.rag_require_citations is False
+        assert cfg_custom.rag_enable_faithfulness_check is False
+
+        # Invalid temperature > 2.0 or < 0.0
+        with pytest.raises(ValidationError):
+            Settings(rag_temperature=-0.1, _env_file=None)
+        with pytest.raises(ValidationError):
+            Settings(rag_temperature=2.5, _env_file=None)
+
+        # Invalid positive ints
+        with pytest.raises(ValidationError):
+            Settings(rag_top_k=0, _env_file=None)
+        with pytest.raises(ValidationError):
+            Settings(rag_max_context_tokens=0, _env_file=None)
+        with pytest.raises(ValidationError):
+            Settings(rag_max_generation_tokens=0, _env_file=None)
+        with pytest.raises(ValidationError):
+            Settings(rag_generation_timeout=0, _env_file=None)
+        with pytest.raises(ValidationError):
+            Settings(rag_min_evidence_items=0, _env_file=None)
